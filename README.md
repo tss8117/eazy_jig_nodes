@@ -67,7 +67,7 @@ Deploy the helpers to `/home/pi/eazy_jig/` on the Pi (or override the `helper_pa
 ## Summary
 
 - 24 subflow files total across the four groups
-- 13 built, 10 scaffolded, plus the ADS1115 (13 real + 10 scaffold + 1 = the ADS1115 was already built earlier so it's counted here as built)
+- 14 built, 10 scaffolded
 - All scaffolds return a consistent `{ success: false, scaffold: true, error: '...' }` shape
 
 ## Usage pattern
