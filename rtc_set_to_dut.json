@@ -1,0 +1,56 @@
+[
+  {
+    "id": "rtc_set_subflow",
+    "type": "subflow",
+    "name": "RTC Set to DUT",
+    "info": "Reads the Raspberry Pi's own current time and writes it to the DUT over a serial port. The exact wire format depends on how the DUT expects the timestamp — the default here builds a standard 'AT+SETTIME=YYYY,MM,DD,HH,MM,SS\\r\\n' command. Override the format template per product.\n\n**Prerequisites:**\n- Serial port to DUT available and permissions granted\n- DUT firmware accepts the command format defined in `command_template`\n\n**Configuration (per instance):**\n- `port` — Device path to DUT (e.g. /dev/ttyUSB0)\n- `baud` — Baud rate\n- `command_template` — Template with {y} {mo} {d} {h} {mi} {s} placeholders. Default: 'AT+SETTIME={y},{mo},{d},{h},{mi},{s}\\r\\n'\n- `expect_response` — String the DUT should reply with on success (e.g. 'OK')\n- `timeout_ms` — Reply wait timeout\n\n**Input:** any msg triggers the write.\n**Output:** msg.payload = { success, sent, received, timestamp }",
+    "category": "eazy",
+    "in": [{ "x": 40, "y": 80, "wires": [{ "id": "rtc_build" }] }],
+    "out": [{ "x": 700, "y": 80, "wires": [{ "id": "rtc_parse", "port": 0 }] }],
+    "env": [
+      { "name": "port", "type": "str", "value": "/dev/ttyUSB0" },
+      { "name": "baud", "type": "num", "value": "115200" },
+      { "name": "command_template", "type": "str", "value": "AT+SETTIME={y},{mo},{d},{h},{mi},{s}\\r\\n" },
+      { "name": "expect_response", "type": "str", "value": "OK" },
+      { "name": "timeout_ms", "type": "num", "value": "2000" }
+    ],
+    "color": "#c7e0f4"
+  },
+  {
+    "id": "rtc_build",
+    "type": "function",
+    "z": "rtc_set_subflow",
+    "name": "Build cmd + serial call",
+    "func": "const port = env.get('port');\nconst baud = Number(env.get('baud'));\nconst template = env.get('command_template');\nconst timeoutMs = Number(env.get('timeout_ms')) || 2000;\nconst expected = env.get('expect_response');\n\nconst now = new Date();\nconst pad = n => String(n).padStart(2, '0');\nconst sent = template\n    .replace('{y}', now.getFullYear())\n    .replace('{mo}', pad(now.getMonth() + 1))\n    .replace('{d}', pad(now.getDate()))\n    .replace('{h}', pad(now.getHours()))\n    .replace('{mi}', pad(now.getMinutes()))\n    .replace('{s}', pad(now.getSeconds()))\n    .replace(/\\\\r/g, '\\r')\n    .replace(/\\\\n/g, '\\n');\n\nmsg._sent = sent;\nmsg._expected = expected;\n\nconst payload = JSON.stringify(sent);\nmsg.payload = `sh -c 'stty -F ${port} ${baud} raw -echo && printf %s ${payload} > ${port} & timeout ${timeoutMs / 1000} cat ${port}'`;\nreturn msg;",
+    "outputs": 1,
+    "x": 240,
+    "y": 80,
+    "wires": [["rtc_exec"]]
+  },
+  {
+    "id": "rtc_exec",
+    "type": "exec",
+    "z": "rtc_set_subflow",
+    "command": "",
+    "addpay": "payload",
+    "append": "",
+    "useSpawn": "false",
+    "timer": "5",
+    "oldrc": false,
+    "name": "Send + read",
+    "x": 440,
+    "y": 80,
+    "wires": [["rtc_parse"], ["rtc_parse"], ["rtc_parse"]]
+  },
+  {
+    "id": "rtc_parse",
+    "type": "function",
+    "z": "rtc_set_subflow",
+    "name": "Parse response",
+    "func": "const rc = msg.rc && typeof msg.rc.code === 'number' ? msg.rc.code : null;\nconst text = (typeof msg.payload === 'string') ? msg.payload : '';\n\nif (rc === null) {\n    msg._buf = (msg._buf || '') + text;\n    return null;\n}\n\nconst received = (msg._buf || '').trim();\nconst success = rc === 0 && (msg._expected ? received.includes(msg._expected) : true);\n\nmsg.payload = {\n    success,\n    sent: msg._sent,\n    received,\n    exit_code: rc,\n    timestamp: new Date().toISOString()\n};\n\ndelete msg._sent;\ndelete msg._expected;\ndelete msg._buf;\nreturn msg;",
+    "outputs": 1,
+    "x": 600,
+    "y": 80,
+    "wires": [[]]
+  }
+]

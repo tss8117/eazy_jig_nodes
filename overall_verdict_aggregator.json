@@ -1,0 +1,24 @@
+[
+  {
+    "id": "verdict_aggregator_subflow",
+    "type": "subflow",
+    "name": "Overall Verdict Aggregator",
+    "info": "Combines individual test results into an overall PASS or FAIL verdict for the whole cycle.\n\n**Input:** msg.payload is an array of result objects. Each must have a `status` field. The aggregator does not care what other fields are present.\n\n**Rule:** if any result has status !== 'PASS', overall is FAIL. All PASS makes overall PASS. Empty array is treated as FAIL (nothing was tested).\n\n**Output:** msg.payload = { overall_status, pass_count, fail_count, total, failing_names, timestamp }\n\n**Configuration:** none — behavior is intentionally rigid.",
+    "category": "eazy",
+    "in": [{ "x": 40, "y": 80, "wires": [{ "id": "verdict_compute" }] }],
+    "out": [{ "x": 340, "y": 80, "wires": [{ "id": "verdict_compute", "port": 0 }] }],
+    "env": [],
+    "color": "#c7e0f4"
+  },
+  {
+    "id": "verdict_compute",
+    "type": "function",
+    "z": "verdict_aggregator_subflow",
+    "name": "Compute verdict",
+    "func": "const results = Array.isArray(msg.payload) ? msg.payload : [];\n\nlet passCount = 0;\nlet failCount = 0;\nconst failingNames = [];\n\nfor (const r of results) {\n    if (r && r.status === 'PASS') {\n        passCount++;\n    } else {\n        failCount++;\n        // Try common name fields.\n        const name = r && (r.relay_name || r.name || r.input_name || r.output_name || r.control_name || 'unnamed');\n        failingNames.push(name);\n    }\n}\n\nmsg.payload = {\n    overall_status: (results.length > 0 && failCount === 0) ? 'PASS' : 'FAIL',\n    pass_count: passCount,\n    fail_count: failCount,\n    total: results.length,\n    failing_names: failingNames,\n    timestamp: new Date().toISOString()\n};\nreturn msg;",
+    "outputs": 1,
+    "x": 200,
+    "y": 80,
+    "wires": [[]]
+  }
+]

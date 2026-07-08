@@ -1,0 +1,26 @@
+[
+  {
+    "id": "test_status_cards_subflow",
+    "type": "subflow",
+    "name": "Test Status Cards",
+    "info": "Takes a slice of test results for one category and formats them into the shape a dashboard ui_template can render as color-coded cards.\n\nBecause the actual ui_template must live in the main flow (dashboard UI nodes have known limitations inside v1 Node-RED subflows), this subflow prepares the data. The recommended pattern is:\n\n    Broadcast Results → Extract Slice (this subflow) → ui_template (in main flow)\n\n**Input:** msg.payload is an array of result objects for one category. Each should have `status` and a name field (relay_name / input_name / etc.).\n\n**Output:** msg.payload = { category, items: [{ id, status, color, subtitle }], counts: { pass, fail, total }, timestamp }\n  - color: 'green' for PASS, 'red' for FAIL, 'orange' for MISCONFIGURED, 'grey' for anything else.\n  - subtitle: short one-line summary of the measurement if numeric, else empty.\n\n**Configuration (per instance):**\n- `category_name` — Category label (e.g. 'Relays', 'Voltages'), used in the payload for the ui_template to render as a header.",
+    "category": "eazy",
+    "in": [{ "x": 40, "y": 80, "wires": [{ "id": "tsc_format" }] }],
+    "out": [{ "x": 340, "y": 80, "wires": [{ "id": "tsc_format", "port": 0 }] }],
+    "env": [
+      { "name": "category_name", "type": "str", "value": "Results" }
+    ],
+    "color": "#c7e0f4"
+  },
+  {
+    "id": "tsc_format",
+    "type": "function",
+    "z": "test_status_cards_subflow",
+    "name": "Format for UI",
+    "func": "const category = env.get('category_name');\nconst results = Array.isArray(msg.payload) ? msg.payload : [];\n\nconst colorFor = status => {\n    if (status === 'PASS') return 'green';\n    if (status === 'FAIL') return 'red';\n    if (status === 'MISCONFIGURED' || status === 'CATALOG_MISS') return 'orange';\n    return 'grey';\n};\n\nconst subtitleFor = item => {\n    if (item.measured_v !== undefined) {\n        return `${item.measured_v}V (expected ${item.expected_v}±${item.tolerance_v})`;\n    }\n    if (item.measured_hz !== undefined) {\n        return `${item.measured_hz}Hz (target ${item.target_hz}±${item.tolerance_hz})`;\n    }\n    if (item.detected_devices !== undefined) {\n        return `${item.detected_devices}/${item.expected_devices} devices detected`;\n    }\n    return '';\n};\n\nconst nameFor = item =>\n    item.relay_name || item.input_name || item.output_name ||\n    item.control_name || item.name || item.id || 'unnamed';\n\nlet pass = 0, fail = 0;\nconst items = results.map(r => {\n    const status = r.status || 'UNKNOWN';\n    if (status === 'PASS') pass++;\n    else fail++;\n    return {\n        id: nameFor(r),\n        status,\n        color: colorFor(status),\n        subtitle: subtitleFor(r),\n        error: r.error\n    };\n});\n\nmsg.payload = {\n    category,\n    items,\n    counts: { pass, fail, total: results.length },\n    timestamp: new Date().toISOString()\n};\nreturn msg;",
+    "outputs": 1,
+    "x": 200,
+    "y": 80,
+    "wires": [[]]
+  }
+]

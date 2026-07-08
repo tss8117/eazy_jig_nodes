@@ -1,0 +1,68 @@
+[
+  {
+    "id": "subflow_stub_esp_wifi_test",
+    "type": "subflow",
+    "name": "ESP WiFi Test",
+    "info": "**SCAFFOLD \u2014 NOT YET IMPLEMENTED**\n\nESP WiFi Test. This node is a placeholder that returns a clear 'not implemented' response so downstream flows can handle it as a known missing dependency.\n\n**Blocked on:**\n- Test-line WiFi AP with known credentials\n- ESP32 debug UART output format for reporting connection status\n\nWhen the blockers are resolved, replace this scaffold with a real implementation.",
+    "category": "eazy",
+    "in": [
+      {
+        "x": 40,
+        "y": 80,
+        "wires": [
+          {
+            "id": "stub_esp_wifi_test"
+          }
+        ]
+      }
+    ],
+    "out": [
+      {
+        "x": 360,
+        "y": 80,
+        "wires": [
+          {
+            "id": "stub_esp_wifi_test",
+            "port": 0
+          }
+        ]
+      }
+    ],
+    "env": [
+      {
+        "name": "ssid",
+        "type": "str",
+        "value": "EAZY_TEST"
+      },
+      {
+        "name": "port",
+        "type": "str",
+        "value": "/dev/ttyUSB0"
+      },
+      {
+        "name": "baud",
+        "type": "str",
+        "value": "115200"
+      },
+      {
+        "name": "timeout_ms",
+        "type": "str",
+        "value": "30000"
+      }
+    ],
+    "color": "#e8dcb5"
+  },
+  {
+    "id": "stub_esp_wifi_test",
+    "type": "function",
+    "z": "subflow_stub_esp_wifi_test",
+    "name": "Not implemented",
+    "func": "msg.payload = {\n    success: false,\n    error: 'ESP WiFi Test not yet implemented. Blocked on: Test-line WiFi AP with known credentials; ESP32 debug UART output format for reporting connection status',\n    timestamp: new Date().toISOString(),\n    scaffold: true\n};\nreturn msg;",
+    "outputs": 1,
+    "x": 220,
+    "y": 80,
+    "wires": [
+      []
+    ]
+  }
+]

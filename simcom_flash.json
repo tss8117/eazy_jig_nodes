@@ -1,0 +1,53 @@
+[
+  {
+    "id": "subflow_stub_simcom_flash",
+    "type": "subflow",
+    "name": "SIMCOM Flash",
+    "info": "**SCAFFOLD \u2014 NOT YET IMPLEMENTED**\n\nSIMCOM Flash. This node is a placeholder that returns a clear 'not implemented' response so downstream flows can handle it as a known missing dependency.\n\n**Blocked on:**\n- Confirmation whether SIMCOM is flashed on-line or pre-loaded by vendor\n- If flashed on-line, which tool (QFlash, SIMCOM updater, AT-DFU)\n\nWhen the blockers are resolved, replace this scaffold with a real implementation.",
+    "category": "eazy",
+    "in": [
+      {
+        "x": 40,
+        "y": 80,
+        "wires": [
+          {
+            "id": "stub_simcom_flash"
+          }
+        ]
+      }
+    ],
+    "out": [
+      {
+        "x": 360,
+        "y": 80,
+        "wires": [
+          {
+            "id": "stub_simcom_flash",
+            "port": 0
+          }
+        ]
+      }
+    ],
+    "env": [
+      {
+        "name": "firmware_path",
+        "type": "str",
+        "value": ""
+      }
+    ],
+    "color": "#e8dcb5"
+  },
+  {
+    "id": "stub_simcom_flash",
+    "type": "function",
+    "z": "subflow_stub_simcom_flash",
+    "name": "Not implemented",
+    "func": "msg.payload = {\n    success: false,\n    error: 'SIMCOM Flash not yet implemented. Blocked on: Confirmation whether SIMCOM is flashed on-line or pre-loaded by vendor; If flashed on-line, which tool (QFlash, SIMCOM updater, AT-DFU)',\n    timestamp: new Date().toISOString(),\n    scaffold: true\n};\nreturn msg;",
+    "outputs": 1,
+    "x": 220,
+    "y": 80,
+    "wires": [
+      []
+    ]
+  }
+]

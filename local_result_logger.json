@@ -1,0 +1,54 @@
+[
+  {
+    "id": "local_result_logger_subflow",
+    "type": "subflow",
+    "name": "Local Result Logger",
+    "info": "Appends a completed test cycle's result to a local file on the Raspberry Pi. Uses JSONL (one JSON object per line) which is easy for Excel, Python, and command-line tools to consume.\n\nFor Excel-native .xlsx output, use node-red-contrib-excel externally instead — this subflow is a lightweight built-ins-only alternative.\n\n**Prerequisites:**\n- The log folder must exist and be writable by the user Node-RED runs as.\n\n**Configuration (per instance):**\n- `log_folder` — Where to write log files (default /home/pi/eazy_jig/logs)\n- `file_prefix` — Prefix for the daily log file (default 'eazy_jig')\n- `include_full_payload` — 'true' or 'false'. If false, only a summary is logged.\n\n**Input:** msg.payload is the completed test result to log (any object).\n**Output:** msg.payload = { success, file_path, bytes_written, timestamp }",
+    "category": "eazy",
+    "in": [{ "x": 40, "y": 80, "wires": [{ "id": "logger_prep" }] }],
+    "out": [{ "x": 640, "y": 80, "wires": [{ "id": "logger_format", "port": 0 }] }],
+    "env": [
+      { "name": "log_folder", "type": "str", "value": "/home/pi/eazy_jig/logs" },
+      { "name": "file_prefix", "type": "str", "value": "eazy_jig" },
+      { "name": "include_full_payload", "type": "str", "value": "true" }
+    ],
+    "color": "#c7e0f4"
+  },
+  {
+    "id": "logger_prep",
+    "type": "function",
+    "z": "local_result_logger_subflow",
+    "name": "Prep write",
+    "func": "const folder = env.get('log_folder');\nconst prefix = env.get('file_prefix');\nconst includeFull = env.get('include_full_payload') === 'true';\n\nconst now = new Date();\nconst pad = n => String(n).padStart(2, '0');\nconst dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;\nconst filePath = `${folder}/${prefix}_${dateStr}.jsonl`;\n\nconst entry = {\n    logged_at: now.toISOString(),\n    result: includeFull ? msg.payload : {\n        overall_status: msg.payload && msg.payload.overall_status,\n        pass_count: msg.payload && msg.payload.pass_count,\n        fail_count: msg.payload && msg.payload.fail_count\n    }\n};\n\nconst entryText = JSON.stringify(entry);\nmsg._file_path = filePath;\nmsg._entry_text = entryText;\nmsg.filename = filePath;\nmsg.payload = entryText;\nreturn msg;",
+    "outputs": 1,
+    "x": 200,
+    "y": 80,
+    "wires": [["logger_write"]]
+  },
+  {
+    "id": "logger_write",
+    "type": "file",
+    "z": "local_result_logger_subflow",
+    "name": "Append line",
+    "filename": "",
+    "filenameType": "msg",
+    "appendNewline": true,
+    "createDir": true,
+    "overwriteFile": "false",
+    "encoding": "utf8",
+    "x": 400,
+    "y": 80,
+    "wires": [["logger_format"]]
+  },
+  {
+    "id": "logger_format",
+    "type": "function",
+    "z": "local_result_logger_subflow",
+    "name": "Format result",
+    "func": "// This node runs AFTER the file write. Reconstruct a clean response.\nmsg.payload = {\n    success: true,\n    file_path: msg._file_path,\n    bytes_written: (msg._entry_text || '').length,\n    timestamp: new Date().toISOString()\n};\n\ndelete msg._entry_text;\ndelete msg._file_path;\ndelete msg.filename;\nreturn msg;",
+    "outputs": 1,
+    "x": 560,
+    "y": 80,
+    "wires": [[]]
+  }
+]

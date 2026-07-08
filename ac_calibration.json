@@ -1,0 +1,58 @@
+[
+  {
+    "id": "subflow_stub_ac_calibration",
+    "type": "subflow",
+    "name": "AC Calibration",
+    "info": "**SCAFFOLD \u2014 NOT YET IMPLEMENTED**\n\nAC Calibration. This node is a placeholder that returns a clear 'not implemented' response so downstream flows can handle it as a known missing dependency.\n\n**Blocked on:**\n- Confirmation of calibrator source (on-board or external)\n- If external, calibrator interface (GPIB, Ethernet, manual)\n- DUT protocol for reporting AC measurements back\n\nWhen the blockers are resolved, replace this scaffold with a real implementation.",
+    "category": "eazy",
+    "in": [
+      {
+        "x": 40,
+        "y": 80,
+        "wires": [
+          {
+            "id": "stub_ac_calibration"
+          }
+        ]
+      }
+    ],
+    "out": [
+      {
+        "x": 360,
+        "y": 80,
+        "wires": [
+          {
+            "id": "stub_ac_calibration",
+            "port": 0
+          }
+        ]
+      }
+    ],
+    "env": [
+      {
+        "name": "phase_relay_pins",
+        "type": "str",
+        "value": "5,6,7"
+      },
+      {
+        "name": "expected_v_rms",
+        "type": "str",
+        "value": "230.0"
+      }
+    ],
+    "color": "#e8dcb5"
+  },
+  {
+    "id": "stub_ac_calibration",
+    "type": "function",
+    "z": "subflow_stub_ac_calibration",
+    "name": "Not implemented",
+    "func": "msg.payload = {\n    success: false,\n    error: 'AC Calibration not yet implemented. Blocked on: Confirmation of calibrator source (on-board or external); If external, calibrator interface (GPIB, Ethernet, manual); DUT protocol for reporting AC measurements back',\n    timestamp: new Date().toISOString(),\n    scaffold: true\n};\nreturn msg;",
+    "outputs": 1,
+    "x": 220,
+    "y": 80,
+    "wires": [
+      []
+    ]
+  }
+]

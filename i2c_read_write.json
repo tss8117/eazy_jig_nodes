@@ -1,0 +1,55 @@
+[
+  {
+    "id": "i2c_rw_subflow",
+    "type": "subflow",
+    "name": "I2C Read/Write",
+    "info": "Reads or writes a register on an I2C device on the Pi's I2C1 bus.\n\n**Prerequisites:**\n- Pi has I2C1 enabled (raspi-config → Interfaces → I2C)\n- i2c-tools installed (`sudo apt install i2c-tools`)\n- Target device wired to I2C1: SDA GPIO 2, SCL GPIO 3\n\n**Configuration (per instance):**\n- `mode` — 'read' or 'write'\n- `address` — I2C 7-bit device address in hex (e.g. '0x48')\n- `register` — register address to read/write, in hex\n- `value` — for write mode only, the byte to write (0-255)\n\n**Input:** any msg triggers the operation.\n**Output:** msg.payload = { success, mode, address, register, value, timestamp }",
+    "category": "eazy",
+    "in": [{ "x": 40, "y": 80, "wires": [{ "id": "i2c_build" }] }],
+    "out": [{ "x": 640, "y": 80, "wires": [{ "id": "i2c_parse", "port": 0 }] }],
+    "env": [
+      { "name": "mode", "type": "str", "value": "read" },
+      { "name": "address", "type": "str", "value": "0x48" },
+      { "name": "register", "type": "str", "value": "0x00" },
+      { "name": "value", "type": "str", "value": "0x00" }
+    ],
+    "color": "#c7e0f4"
+  },
+  {
+    "id": "i2c_build",
+    "type": "function",
+    "z": "i2c_rw_subflow",
+    "name": "Build i2c cmd",
+    "func": "const mode = env.get('mode');\nconst address = env.get('address');\nconst reg = env.get('register');\nconst val = env.get('value');\n\nif (!['read', 'write'].includes(mode)) {\n    node.error(`invalid mode: ${mode}, expected 'read' or 'write'`, msg);\n    return null;\n}\n\nmsg._mode = mode;\nmsg._address = address;\nmsg._register = reg;\nmsg._value = val;\n\n// i2cget/i2cset from i2c-tools, bus 1.\nif (mode === 'read') {\n    msg.payload = `i2cget -y 1 ${address} ${reg}`;\n} else {\n    msg.payload = `i2cset -y 1 ${address} ${reg} ${val}`;\n}\nreturn msg;",
+    "outputs": 1,
+    "x": 220,
+    "y": 80,
+    "wires": [["i2c_exec"]]
+  },
+  {
+    "id": "i2c_exec",
+    "type": "exec",
+    "z": "i2c_rw_subflow",
+    "command": "",
+    "addpay": "payload",
+    "append": "",
+    "useSpawn": "false",
+    "timer": "2",
+    "oldrc": false,
+    "name": "i2c-tools",
+    "x": 400,
+    "y": 80,
+    "wires": [["i2c_parse"], ["i2c_parse"], ["i2c_parse"]]
+  },
+  {
+    "id": "i2c_parse",
+    "type": "function",
+    "z": "i2c_rw_subflow",
+    "name": "Parse result",
+    "func": "const rc = msg.rc && typeof msg.rc.code === 'number' ? msg.rc.code : null;\nconst text = (typeof msg.payload === 'string') ? msg.payload.trim() : '';\n\nif (rc === null) {\n    msg._buf = (msg._buf || '') + text;\n    return null;\n}\n\nconst output = (msg._buf || '').trim();\nlet result = {\n    success: rc === 0,\n    mode: msg._mode,\n    address: msg._address,\n    register: msg._register,\n    exit_code: rc,\n    timestamp: new Date().toISOString()\n};\n\nif (msg._mode === 'read' && rc === 0) {\n    result.value = output;  // e.g. '0x2a'\n} else if (msg._mode === 'write') {\n    result.value_written = msg._value;\n} else {\n    result.error = output;\n}\n\nmsg.payload = result;\n\ndelete msg._mode;\ndelete msg._address;\ndelete msg._register;\ndelete msg._value;\ndelete msg._buf;\nreturn msg;",
+    "outputs": 1,
+    "x": 560,
+    "y": 80,
+    "wires": [[]]
+  }
+]

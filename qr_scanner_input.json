@@ -1,0 +1,27 @@
+[
+  {
+    "id": "qr_scanner_subflow",
+    "type": "subflow",
+    "name": "QR Scanner Input",
+    "info": "Receives scanned codes from a keyboard-wedge USB QR gun via a Node-RED dashboard form field. The QR gun types the scanned code as if it were a keyboard, followed by Enter, which triggers the form submission.\n\n**Prerequisites:**\n- Node-RED dashboard installed (node-red-dashboard for v1 or @flowfuse/node-red-dashboard for v2)\n- QR gun configured as USB HID keyboard (typical default)\n- The form field is added to a dashboard group by the flow author\n\n**Configuration (per instance):**\n- `field_label` — Label shown to the operator (e.g. 'Scan serial number')\n- `expected_format` — Regex the scanned value must match, else FAIL (e.g. '^[0-9]{8}$'). Leave empty to accept anything.\n\n**Input:** dashboard form submission triggers the flow (wire ui_form node's output to this subflow's input).\n**Output:** msg.payload = { scanned_value, matches_format, field_label, timestamp }\n\n**Note:** the actual ui_form node lives OUTSIDE this subflow (in the calling flow's UI section). This subflow validates and formats what the ui_form emits.",
+    "category": "eazy",
+    "in": [{ "x": 40, "y": 80, "wires": [{ "id": "qr_validate" }] }],
+    "out": [{ "x": 340, "y": 80, "wires": [{ "id": "qr_validate", "port": 0 }] }],
+    "env": [
+      { "name": "field_label", "type": "str", "value": "Scan serial number" },
+      { "name": "expected_format", "type": "str", "value": "" }
+    ],
+    "color": "#c7e0f4"
+  },
+  {
+    "id": "qr_validate",
+    "type": "function",
+    "z": "qr_scanner_subflow",
+    "name": "Validate + format",
+    "func": "const label = env.get('field_label');\nconst regex = env.get('expected_format');\nconst scanned = String(msg.payload || '').trim();\n\nlet matches = true;\nlet errorMsg = null;\nif (regex) {\n    try {\n        matches = new RegExp(regex).test(scanned);\n        if (!matches) errorMsg = `scanned value does not match expected format: ${regex}`;\n    } catch (e) {\n        matches = false;\n        errorMsg = `invalid regex in expected_format: ${e.message}`;\n    }\n}\n\nmsg.payload = {\n    scanned_value: scanned,\n    matches_format: matches,\n    field_label: label,\n    error: errorMsg,\n    timestamp: new Date().toISOString()\n};\nreturn msg;",
+    "outputs": 1,
+    "x": 200,
+    "y": 80,
+    "wires": [[]]
+  }
+]

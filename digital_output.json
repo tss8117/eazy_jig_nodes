@@ -1,0 +1,56 @@
+[
+  {
+    "id": "digital_output_subflow",
+    "type": "subflow",
+    "name": "Digital Output",
+    "info": "Writes one digital output pin on an MCP23S17 SPI output expander. Used for DUT-facing stimulus outputs (not JIG-side control relays — those are in JIG Board Controls).\n\n**Prerequisites:**\n- Pi has SPI0 enabled\n- MCP23S17 output expander wired on SPI0 CE0, hardware address 4 per block diagram\n- mcp23s17_helper.py present at configured path\n\n**Configuration (per instance):**\n- `output_name` — Human-readable name\n- `chip` — MCP23S17 hardware address (typically 4 for the output expander)\n- `pin` — Pin number 0-15 on that chip\n- `value` — 0 or 1 to write\n- `helper_path` — Path to mcp23s17_helper.py\n\n**Input:** any msg triggers the write.\n**Output:** msg.payload = { output_name, chip, pin, commanded, success, timestamp }",
+    "category": "eazy",
+    "in": [{ "x": 40, "y": 80, "wires": [{ "id": "dout_build" }] }],
+    "out": [{ "x": 640, "y": 80, "wires": [{ "id": "dout_parse", "port": 0 }] }],
+    "env": [
+      { "name": "output_name", "type": "str", "value": "Digital Output 0" },
+      { "name": "chip", "type": "num", "value": "4" },
+      { "name": "pin", "type": "num", "value": "0" },
+      { "name": "value", "type": "num", "value": "1" },
+      { "name": "helper_path", "type": "str", "value": "/home/pi/eazy_jig/mcp23s17_helper.py" }
+    ],
+    "color": "#c7e0f4"
+  },
+  {
+    "id": "dout_build",
+    "type": "function",
+    "z": "digital_output_subflow",
+    "name": "Build cmd",
+    "func": "const name = env.get('output_name');\nconst chip = Number(env.get('chip'));\nconst pin = Number(env.get('pin'));\nconst value = Number(env.get('value'));\nconst helperPath = env.get('helper_path');\n\nif (!helperPath) { node.error('helper_path env var must be set', msg); return null; }\nif (![0, 1].includes(value)) { node.error('value must be 0 or 1', msg); return null; }\nif (isNaN(chip) || chip < 0 || chip > 7) { node.error('chip must be 0-7', msg); return null; }\nif (isNaN(pin) || pin < 0 || pin > 15) { node.error('pin must be 0-15', msg); return null; }\n\nmsg._cfg = { name, chip, pin, value };\nmsg.payload = `python3 ${helperPath} write --chip ${chip} --pin ${pin} --value ${value}`;\nreturn msg;",
+    "outputs": 1,
+    "x": 200,
+    "y": 80,
+    "wires": [["dout_exec"]]
+  },
+  {
+    "id": "dout_exec",
+    "type": "exec",
+    "z": "digital_output_subflow",
+    "command": "",
+    "addpay": "payload",
+    "append": "",
+    "useSpawn": "false",
+    "timer": "2",
+    "oldrc": false,
+    "name": "MCP23S17 write",
+    "x": 400,
+    "y": 80,
+    "wires": [["dout_parse"], ["dout_parse"], ["dout_parse"]]
+  },
+  {
+    "id": "dout_parse",
+    "type": "function",
+    "z": "digital_output_subflow",
+    "name": "Parse result",
+    "func": "const rc = msg.rc && typeof msg.rc.code === 'number' ? msg.rc.code : null;\nconst text = (typeof msg.payload === 'string') ? msg.payload : '';\n\nif (rc === null) {\n    msg._buf = (msg._buf || '') + text;\n    return null;\n}\n\nconst output = (msg._buf || '').trim();\ntry {\n    const result = JSON.parse(output);\n    msg.payload = {\n        output_name: msg._cfg.name,\n        chip: msg._cfg.chip,\n        pin: msg._cfg.pin,\n        commanded: msg._cfg.value,\n        success: result.success,\n        timestamp: new Date().toISOString()\n    };\n} catch (e) {\n    msg.payload = {\n        output_name: msg._cfg.name,\n        success: false,\n        error: `could not parse: ${output}`,\n        timestamp: new Date().toISOString()\n    };\n}\n\ndelete msg._cfg;\ndelete msg._buf;\nreturn msg;",
+    "outputs": 1,
+    "x": 560,
+    "y": 80,
+    "wires": [[]]
+  }
+]

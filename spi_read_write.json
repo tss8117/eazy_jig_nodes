@@ -1,0 +1,57 @@
+[
+  {
+    "id": "spi_rw_subflow",
+    "type": "subflow",
+    "name": "SPI Read/Write",
+    "info": "Reads or writes bytes on the Pi's SPI0 bus. Suitable for talking to the ADE metering IC (SPI mode) and other SPI devices on the peripheral board.\n\n**Prerequisites:**\n- Pi has SPI0 enabled (raspi-config → Interfaces → SPI)\n- Python 3 with spidev installed (`pip install spidev`)\n- Target device wired to SPI0: MOSI GPIO 10, MISO GPIO 9, SCLK GPIO 11, CE GPIO 8 (CE0) or GPIO 7 (CE1)\n\n**Configuration (per instance):**\n- `ce` — Chip enable line (0 or 1)\n- `speed_hz` — SPI clock speed (default 1000000)\n- `spi_mode` — SPI mode (0-3, default 0)\n- `tx_bytes` — Comma-separated hex bytes to send, e.g. '0x02,0x00,0x2A'\n- `rx_length` — Number of bytes to read after tx (0 for write-only)\n\n**Input:** any msg triggers the operation.\n**Output:** msg.payload = { success, tx, rx, timestamp }",
+    "category": "eazy",
+    "in": [{ "x": 40, "y": 80, "wires": [{ "id": "spi_build" }] }],
+    "out": [{ "x": 640, "y": 80, "wires": [{ "id": "spi_parse", "port": 0 }] }],
+    "env": [
+      { "name": "ce", "type": "num", "value": "0" },
+      { "name": "speed_hz", "type": "num", "value": "1000000" },
+      { "name": "spi_mode", "type": "num", "value": "0" },
+      { "name": "tx_bytes", "type": "str", "value": "0x00" },
+      { "name": "rx_length", "type": "num", "value": "1" },
+      { "name": "helper_path", "type": "str", "value": "/home/pi/eazy_jig/spi_helper.py" }
+    ],
+    "color": "#c7e0f4"
+  },
+  {
+    "id": "spi_build",
+    "type": "function",
+    "z": "spi_rw_subflow",
+    "name": "Build spi cmd",
+    "func": "const ce = Number(env.get('ce'));\nconst speed = Number(env.get('speed_hz'));\nconst mode = Number(env.get('spi_mode'));\nconst tx = env.get('tx_bytes');\nconst rxLen = Number(env.get('rx_length'));\nconst helperPath = env.get('helper_path');\n\nif (!helperPath) { node.error('helper_path env var must be set', msg); return null; }\nif (![0, 1].includes(ce)) { node.error('ce must be 0 or 1', msg); return null; }\n\nmsg._tx = tx;\nmsg.payload = `python3 ${helperPath} --ce ${ce} --speed ${speed} --mode ${mode} --tx '${tx}' --rx-length ${rxLen}`;\nreturn msg;",
+    "outputs": 1,
+    "x": 220,
+    "y": 80,
+    "wires": [["spi_exec"]]
+  },
+  {
+    "id": "spi_exec",
+    "type": "exec",
+    "z": "spi_rw_subflow",
+    "command": "",
+    "addpay": "payload",
+    "append": "",
+    "useSpawn": "false",
+    "timer": "2",
+    "oldrc": false,
+    "name": "spi_helper.py",
+    "x": 400,
+    "y": 80,
+    "wires": [["spi_parse"], ["spi_parse"], ["spi_parse"]]
+  },
+  {
+    "id": "spi_parse",
+    "type": "function",
+    "z": "spi_rw_subflow",
+    "name": "Parse result",
+    "func": "const rc = msg.rc && typeof msg.rc.code === 'number' ? msg.rc.code : null;\nconst text = (typeof msg.payload === 'string') ? msg.payload : '';\n\nif (rc === null) {\n    msg._buf = (msg._buf || '') + text;\n    return null;\n}\n\nconst output = (msg._buf || '').trim();\ntry {\n    const parsed = JSON.parse(output);\n    parsed.tx = msg._tx;\n    parsed.timestamp = new Date().toISOString();\n    msg.payload = parsed;\n} catch (e) {\n    msg.payload = {\n        success: false,\n        error: `could not parse helper output: ${output}`,\n        tx: msg._tx,\n        exit_code: rc,\n        timestamp: new Date().toISOString()\n    };\n}\n\ndelete msg._tx;\ndelete msg._buf;\nreturn msg;",
+    "outputs": 1,
+    "x": 560,
+    "y": 80,
+    "wires": [[]]
+  }
+]

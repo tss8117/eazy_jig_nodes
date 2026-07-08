@@ -1,0 +1,55 @@
+[
+  {
+    "id": "serial_protocol_subflow",
+    "type": "subflow",
+    "name": "Serial Protocol",
+    "info": "Sends bytes over a serial port and reads the response. Covers RS-485, RS-232, and plain UART — the transceiver IC (SN65HVD72, ICL3232, etc.) determines the wire signalling but the Node-RED interface is the same.\n\n**Prerequisites:**\n- node-red-node-serialport community package installed\n- Serial port available and permissions granted (add user to `dialout` group)\n- For RS-485: a GPIO controls the DE/RE line, wire it separately\n\n**Configuration (per instance):**\n- `port` — Device path (e.g. /dev/ttyAMA0 for UART0, /dev/ttyAMA5 for UART5)\n- `baud` — Baud rate\n- `timeout_ms` — How long to wait for a response (default 2000)\n- `response_terminator` — String that marks end of response (e.g. '\\n', '\\r\\n', or a specific byte)\n\n**Input:** msg.payload is the bytes to send (string or Buffer).\n**Output:** msg.payload = { success, tx, rx, elapsed_ms, timestamp }",
+    "category": "eazy",
+    "in": [{ "x": 40, "y": 80, "wires": [{ "id": "serial_prep" }] }],
+    "out": [{ "x": 700, "y": 80, "wires": [{ "id": "serial_format", "port": 0 }] }],
+    "env": [
+      { "name": "port", "type": "str", "value": "/dev/ttyAMA5" },
+      { "name": "baud", "type": "num", "value": "115200" },
+      { "name": "timeout_ms", "type": "num", "value": "2000" },
+      { "name": "response_terminator", "type": "str", "value": "\\n" }
+    ],
+    "color": "#c7e0f4"
+  },
+  {
+    "id": "serial_prep",
+    "type": "function",
+    "z": "serial_protocol_subflow",
+    "name": "Prep send",
+    "func": "const port = env.get('port');\nconst baud = Number(env.get('baud'));\nconst timeoutMs = Number(env.get('timeout_ms')) || 2000;\n\nif (!port) { node.error('port env var must be set', msg); return null; }\nif (isNaN(baud) || baud <= 0) { node.error('invalid baud', msg); return null; }\n\nmsg._cfg = { port, baud, timeoutMs, tx: msg.payload };\nmsg._start = Date.now();\n// Command an exec-based serial round-trip using stty + cat/echo pattern.\n// This is a portable approach that doesn't require the community serialport node.\nconst payload = JSON.stringify(String(msg.payload));\nmsg.payload = `sh -c 'stty -F ${port} ${baud} raw -echo && printf %s ${payload} > ${port} & timeout ${timeoutMs / 1000} cat ${port}'`;\nreturn msg;",
+    "outputs": 1,
+    "x": 200,
+    "y": 80,
+    "wires": [["serial_exec"]]
+  },
+  {
+    "id": "serial_exec",
+    "type": "exec",
+    "z": "serial_protocol_subflow",
+    "command": "",
+    "addpay": "payload",
+    "append": "",
+    "useSpawn": "false",
+    "timer": "5",
+    "oldrc": false,
+    "name": "Send + read",
+    "x": 400,
+    "y": 80,
+    "wires": [["serial_format"], ["serial_format"], ["serial_format"]]
+  },
+  {
+    "id": "serial_format",
+    "type": "function",
+    "z": "serial_protocol_subflow",
+    "name": "Format response",
+    "func": "const rc = msg.rc && typeof msg.rc.code === 'number' ? msg.rc.code : null;\nconst text = (typeof msg.payload === 'string') ? msg.payload : '';\n\nif (rc === null) {\n    msg._buf = (msg._buf || '') + text;\n    return null;\n}\n\nconst rx = msg._buf || '';\nconst elapsed = Date.now() - msg._start;\n\nmsg.payload = {\n    success: rc === 0 && rx.length > 0,\n    tx: msg._cfg.tx,\n    rx: rx,\n    elapsed_ms: elapsed,\n    exit_code: rc,\n    timestamp: new Date().toISOString()\n};\n\ndelete msg._cfg;\ndelete msg._start;\ndelete msg._buf;\nreturn msg;",
+    "outputs": 1,
+    "x": 560,
+    "y": 80,
+    "wires": [[]]
+  }
+]

@@ -1,0 +1,63 @@
+[
+  {
+    "id": "subflow_stub_frequency_read_stm32_co-processor",
+    "type": "subflow",
+    "name": "Frequency Read (STM32 co-processor)",
+    "info": "**SCAFFOLD \u2014 NOT YET IMPLEMENTED**\n\nFrequency Read (STM32 co-processor). This node is a placeholder that returns a clear 'not implemented' response so downstream flows can handle it as a known missing dependency.\n\n**Blocked on:**\n- Firmware team to define co-processor register map or UART command protocol\n- Firmware team to confirm bus (I2C or UART) and address\n\nWhen the blockers are resolved, replace this scaffold with a real implementation.",
+    "category": "eazy",
+    "in": [
+      {
+        "x": 40,
+        "y": 80,
+        "wires": [
+          {
+            "id": "stub_frequency_read_stm32_co-processor"
+          }
+        ]
+      }
+    ],
+    "out": [
+      {
+        "x": 360,
+        "y": 80,
+        "wires": [
+          {
+            "id": "stub_frequency_read_stm32_co-processor",
+            "port": 0
+          }
+        ]
+      }
+    ],
+    "env": [
+      {
+        "name": "bus",
+        "type": "str",
+        "value": "i2c"
+      },
+      {
+        "name": "address",
+        "type": "str",
+        "value": "0x30"
+      },
+      {
+        "name": "channel",
+        "type": "str",
+        "value": "0"
+      }
+    ],
+    "color": "#e8dcb5"
+  },
+  {
+    "id": "stub_frequency_read_stm32_co-processor",
+    "type": "function",
+    "z": "subflow_stub_frequency_read_stm32_co-processor",
+    "name": "Not implemented",
+    "func": "msg.payload = {\n    success: false,\n    error: 'Frequency Read (STM32 co-processor) not yet implemented. Blocked on: Firmware team to define co-processor register map or UART command protocol; Firmware team to confirm bus (I2C or UART) and address',\n    timestamp: new Date().toISOString(),\n    scaffold: true\n};\nreturn msg;",
+    "outputs": 1,
+    "x": 220,
+    "y": 80,
+    "wires": [
+      []
+    ]
+  }
+]

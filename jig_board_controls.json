@@ -1,0 +1,56 @@
+[
+  {
+    "id": "jig_board_controls_subflow",
+    "type": "subflow",
+    "name": "JIG Board Controls",
+    "info": "Controls the JIG board's own fixed-purpose relays: DUT power, indicator LEDs, calibration relays, earth voltage relay. These share the MCP23S17 output expander with DUT-facing outputs but are semantically distinct — they are JIG-side operations, not DUT tests.\n\n**Prerequisites:**\n- Pi has SPI0 enabled\n- MCP23S17 output expander wired on SPI0 CE0, hardware address 4\n- mcp23s17_helper.py present at configured path\n\n**Configuration (per instance):**\n- `control_name` — Which control to actuate. One of: 'dut_power', 'green_led', 'red_led', 'earth_voltage', 'cal_phase_a', 'cal_phase_b', 'cal_phase_c', 'spare'\n- `value` — 0 (off) or 1 (on)\n- `chip` — MCP23S17 hardware address (default 4)\n- `pin_map` — Comma-separated 'name=pin' pairs mapping control_name to pin (defaults per block diagram)\n- `helper_path` — Path to mcp23s17_helper.py\n\n**Input:** any msg triggers the actuation.\n**Output:** msg.payload = { control_name, commanded, success, timestamp }",
+    "category": "eazy",
+    "in": [{ "x": 40, "y": 80, "wires": [{ "id": "jbc_build" }] }],
+    "out": [{ "x": 640, "y": 80, "wires": [{ "id": "jbc_parse", "port": 0 }] }],
+    "env": [
+      { "name": "control_name", "type": "str", "value": "dut_power" },
+      { "name": "value", "type": "num", "value": "1" },
+      { "name": "chip", "type": "num", "value": "4" },
+      { "name": "pin_map", "type": "str", "value": "dut_power=8,green_led=9,red_led=10,earth_voltage=11,cal_phase_a=12,cal_phase_b=13,cal_phase_c=14,spare=15" },
+      { "name": "helper_path", "type": "str", "value": "/home/pi/eazy_jig/mcp23s17_helper.py" }
+    ],
+    "color": "#c7e0f4"
+  },
+  {
+    "id": "jbc_build",
+    "type": "function",
+    "z": "jig_board_controls_subflow",
+    "name": "Resolve pin + build cmd",
+    "func": "const controlName = env.get('control_name');\nconst value = Number(env.get('value'));\nconst chip = Number(env.get('chip'));\nconst pinMapStr = env.get('pin_map');\nconst helperPath = env.get('helper_path');\n\nif (!helperPath) { node.error('helper_path env var must be set', msg); return null; }\nif (![0, 1].includes(value)) { node.error('value must be 0 or 1', msg); return null; }\n\n// Parse pin map: 'name=pin,name=pin,...' → {name: pin, ...}\nconst pinMap = {};\nfor (const entry of pinMapStr.split(',')) {\n    const [k, v] = entry.split('=');\n    if (k && v) pinMap[k.trim()] = Number(v.trim());\n}\n\nconst pin = pinMap[controlName];\nif (pin === undefined || isNaN(pin)) {\n    node.error(`control_name '${controlName}' not found in pin_map`, msg);\n    return null;\n}\n\nmsg._cfg = { controlName, value, chip, pin };\nmsg.payload = `python3 ${helperPath} write --chip ${chip} --pin ${pin} --value ${value}`;\nreturn msg;",
+    "outputs": 1,
+    "x": 220,
+    "y": 80,
+    "wires": [["jbc_exec"]]
+  },
+  {
+    "id": "jbc_exec",
+    "type": "exec",
+    "z": "jig_board_controls_subflow",
+    "command": "",
+    "addpay": "payload",
+    "append": "",
+    "useSpawn": "false",
+    "timer": "2",
+    "oldrc": false,
+    "name": "MCP23S17 write",
+    "x": 400,
+    "y": 80,
+    "wires": [["jbc_parse"], ["jbc_parse"], ["jbc_parse"]]
+  },
+  {
+    "id": "jbc_parse",
+    "type": "function",
+    "z": "jig_board_controls_subflow",
+    "name": "Parse result",
+    "func": "const rc = msg.rc && typeof msg.rc.code === 'number' ? msg.rc.code : null;\nconst text = (typeof msg.payload === 'string') ? msg.payload : '';\n\nif (rc === null) {\n    msg._buf = (msg._buf || '') + text;\n    return null;\n}\n\nconst output = (msg._buf || '').trim();\ntry {\n    const result = JSON.parse(output);\n    msg.payload = {\n        control_name: msg._cfg.controlName,\n        commanded: msg._cfg.value,\n        chip: msg._cfg.chip,\n        pin: msg._cfg.pin,\n        success: result.success,\n        timestamp: new Date().toISOString()\n    };\n} catch (e) {\n    msg.payload = {\n        control_name: msg._cfg.controlName,\n        success: false,\n        error: `could not parse: ${output}`,\n        timestamp: new Date().toISOString()\n    };\n}\n\ndelete msg._cfg;\ndelete msg._buf;\nreturn msg;",
+    "outputs": 1,
+    "x": 560,
+    "y": 80,
+    "wires": [[]]
+  }
+]

@@ -1,0 +1,68 @@
+[
+  {
+    "id": "subflow_stub_dut_reports_result",
+    "type": "subflow",
+    "name": "DUT Reports Result",
+    "info": "**SCAFFOLD \u2014 NOT YET IMPLEMENTED**\n\nDUT Reports Result. This node is a placeholder that returns a clear 'not implemented' response so downstream flows can handle it as a known missing dependency.\n\n**Blocked on:**\n- Per-DUT protocol for query/response (varies by product and test type)\n- Firmware team to provide test request format for EEPROM/RTC/temp/W5500\n\nWhen the blockers are resolved, replace this scaffold with a real implementation.",
+    "category": "eazy",
+    "in": [
+      {
+        "x": 40,
+        "y": 80,
+        "wires": [
+          {
+            "id": "stub_dut_reports_result"
+          }
+        ]
+      }
+    ],
+    "out": [
+      {
+        "x": 360,
+        "y": 80,
+        "wires": [
+          {
+            "id": "stub_dut_reports_result",
+            "port": 0
+          }
+        ]
+      }
+    ],
+    "env": [
+      {
+        "name": "test_type",
+        "type": "str",
+        "value": "EEPROM"
+      },
+      {
+        "name": "port",
+        "type": "str",
+        "value": "/dev/ttyUSB0"
+      },
+      {
+        "name": "baud",
+        "type": "str",
+        "value": "115200"
+      },
+      {
+        "name": "timeout_ms",
+        "type": "str",
+        "value": "2000"
+      }
+    ],
+    "color": "#e8dcb5"
+  },
+  {
+    "id": "stub_dut_reports_result",
+    "type": "function",
+    "z": "subflow_stub_dut_reports_result",
+    "name": "Not implemented",
+    "func": "msg.payload = {\n    success: false,\n    error: 'DUT Reports Result not yet implemented. Blocked on: Per-DUT protocol for query/response (varies by product and test type); Firmware team to provide test request format for EEPROM/RTC/temp/W5500',\n    timestamp: new Date().toISOString(),\n    scaffold: true\n};\nreturn msg;",
+    "outputs": 1,
+    "x": 220,
+    "y": 80,
+    "wires": [
+      []
+    ]
+  }
+]

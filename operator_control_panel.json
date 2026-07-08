@@ -1,0 +1,28 @@
+[
+  {
+    "id": "operator_control_panel_subflow",
+    "type": "subflow",
+    "name": "Operator Control Panel",
+    "info": "Reference implementation of the operator-facing control panel. Emits a start signal when the operator presses the Start button and populates the associated form fields (product, serial, MAC, mode).\n\nBecause dashboard UI nodes work best when placed directly in the main flow (subflows have known quirks with per-instance dashboard state in v1 Node-RED), this subflow is primarily a specification/skeleton that captures the payload shape the rest of the framework expects. The actual dashboard nodes should be placed in the main flow, wired into an inject-style trigger that hands their combined state to this subflow's input.\n\n**Input:** msg.payload = { product, serial_no, mac_id, mode } (from a wired-up dashboard group)\n**Output:** msg.payload = { start_cycle: true, product, serial_no, mac_id, mode, timestamp } (validated + ready to trigger the test flow)\n\n**Configuration (per instance):**\n- `require_serial` — 'true' or 'false' (default true)\n- `require_mac` — 'true' or 'false' (default true)\n- `default_mode` — 'mock-pass', 'mock-fail', 'mock-random', or 'real' (default 'mock-pass')",
+    "category": "eazy",
+    "in": [{ "x": 40, "y": 80, "wires": [{ "id": "ocp_validate" }] }],
+    "out": [{ "x": 340, "y": 80, "wires": [{ "id": "ocp_validate", "port": 0 }] }],
+    "env": [
+      { "name": "require_serial", "type": "str", "value": "true" },
+      { "name": "require_mac", "type": "str", "value": "true" },
+      { "name": "default_mode", "type": "str", "value": "mock-pass" }
+    ],
+    "color": "#c7e0f4"
+  },
+  {
+    "id": "ocp_validate",
+    "type": "function",
+    "z": "operator_control_panel_subflow",
+    "name": "Validate + emit",
+    "func": "const requireSerial = env.get('require_serial') === 'true';\nconst requireMac = env.get('require_mac') === 'true';\nconst defaultMode = env.get('default_mode');\n\nconst input = msg.payload || {};\nconst product = input.product;\nconst serial = input.serial_no || '';\nconst mac = input.mac_id || '';\nconst mode = input.mode || defaultMode;\n\nconst errors = [];\nif (!product) errors.push('product is required');\nif (requireSerial && !serial) errors.push('serial_no is required');\nif (requireMac && !mac) errors.push('mac_id is required');\nif (!['mock-pass', 'mock-fail', 'mock-random', 'real'].includes(mode)) {\n    errors.push(`invalid mode: ${mode}`);\n}\n\nif (errors.length > 0) {\n    msg.payload = {\n        start_cycle: false,\n        errors,\n        timestamp: new Date().toISOString()\n    };\n} else {\n    msg.payload = {\n        start_cycle: true,\n        product,\n        serial_no: serial,\n        mac_id: mac,\n        mode,\n        timestamp: new Date().toISOString()\n    };\n}\nreturn msg;",
+    "outputs": 1,
+    "x": 200,
+    "y": 80,
+    "wires": [[]]
+  }
+]

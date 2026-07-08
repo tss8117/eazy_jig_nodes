@@ -1,0 +1,54 @@
+[
+  {
+    "id": "stm32_flash_subflow",
+    "type": "subflow",
+    "name": "STM32 Flash",
+    "info": "Flashes an STM32F0/G0/L0 microcontroller on the DUT via ST-Link.\n\n**Prerequisites:**\n- Pi has openocd installed (`sudo apt install openocd`)\n- ST-Link V2/V3 connected via USB\n- SWD lines wired to DUT (SWCLK, SWDIO, GND, NRST, VTref)\n\n**Configuration (per instance):**\n- `hex_path` — Absolute path to the .hex file to flash\n- `openocd_target` — openocd target config, default 'target/stm32f0x.cfg' (change to stm32g0x.cfg for G0, etc.)\n- `openocd_interface` — interface config, default 'interface/stlink-v2.cfg'\n\n**Input:** any msg triggers the flash.\n**Output:** msg.payload = { success, hex_path, elapsed_ms, exit_code, timestamp, log }",
+    "category": "eazy",
+    "in": [{ "x": 40, "y": 80, "wires": [{ "id": "stm32_build_cmd" }] }],
+    "out": [{ "x": 700, "y": 80, "wires": [{ "id": "stm32_parse", "port": 0 }] }],
+    "env": [
+      { "name": "hex_path", "type": "str", "value": "/home/pi/eazy_jig/firmware/example.hex" },
+      { "name": "openocd_target", "type": "str", "value": "target/stm32f0x.cfg" },
+      { "name": "openocd_interface", "type": "str", "value": "interface/stlink-v2.cfg" }
+    ],
+    "color": "#c7e0f4"
+  },
+  {
+    "id": "stm32_build_cmd",
+    "type": "function",
+    "z": "stm32_flash_subflow",
+    "name": "Build openocd cmd",
+    "func": "const hexPath = env.get('hex_path');\nconst target = env.get('openocd_target');\nconst iface = env.get('openocd_interface');\n\nif (!hexPath) {\n    node.error('hex_path env var must be set', msg);\n    return null;\n}\n\nmsg._start = Date.now();\nmsg._hex_path = hexPath;\nmsg._log_buffer = '';\nmsg.payload = `openocd -f ${iface} -f ${target} -c \"program ${hexPath} verify reset exit\" 2>&1`;\nreturn msg;",
+    "outputs": 1,
+    "x": 220,
+    "y": 80,
+    "wires": [["stm32_exec"]]
+  },
+  {
+    "id": "stm32_exec",
+    "type": "exec",
+    "z": "stm32_flash_subflow",
+    "command": "",
+    "addpay": "payload",
+    "append": "",
+    "useSpawn": "false",
+    "timer": "60",
+    "oldrc": false,
+    "name": "openocd",
+    "x": 400,
+    "y": 80,
+    "wires": [["stm32_parse"], ["stm32_parse"], ["stm32_parse"]]
+  },
+  {
+    "id": "stm32_parse",
+    "type": "function",
+    "z": "stm32_flash_subflow",
+    "name": "Parse result",
+    "func": "// exec node routes stdout→out0, stderr→out1, exit-code→out2. All wired here.\nconst log = (typeof msg.payload === 'string') ? msg.payload : JSON.stringify(msg.payload);\nconst rc = msg.rc && typeof msg.rc.code === 'number' ? msg.rc.code : null;\n\nif (rc === null) {\n    // Buffer stdout/stderr; wait for exit-code msg.\n    msg._log_buffer = (msg._log_buffer || '') + log;\n    return null;\n}\n\nconst fullLog = (msg._log_buffer || '') + log;\nconst elapsed = Date.now() - msg._start;\nconst success = rc === 0 && (fullLog.includes('Verified OK') || fullLog.includes('wrote'));\n\nmsg.payload = {\n    success,\n    hex_path: msg._hex_path,\n    elapsed_ms: elapsed,\n    exit_code: rc,\n    timestamp: new Date().toISOString(),\n    log: fullLog.split('\\n').slice(-15).join('\\n')\n};\n\ndelete msg._start;\ndelete msg._hex_path;\ndelete msg._log_buffer;\nreturn msg;",
+    "outputs": 1,
+    "x": 560,
+    "y": 80,
+    "wires": [[]]
+  }
+]

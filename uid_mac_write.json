@@ -1,0 +1,63 @@
+[
+  {
+    "id": "subflow_stub_uid/mac_write_to_dut",
+    "type": "subflow",
+    "name": "UID/MAC Write to DUT",
+    "info": "**SCAFFOLD \u2014 NOT YET IMPLEMENTED**\n\nUID/MAC Write to DUT. This node is a placeholder that returns a clear 'not implemented' response so downstream flows can handle it as a known missing dependency.\n\n**Blocked on:**\n- Per-controller protocol for writing UID/MAC to persistent storage (AT commands, custom TLV, EEPROM write, etc.)\n\nWhen the blockers are resolved, replace this scaffold with a real implementation.",
+    "category": "eazy",
+    "in": [
+      {
+        "x": 40,
+        "y": 80,
+        "wires": [
+          {
+            "id": "stub_uid/mac_write_to_dut"
+          }
+        ]
+      }
+    ],
+    "out": [
+      {
+        "x": 360,
+        "y": 80,
+        "wires": [
+          {
+            "id": "stub_uid/mac_write_to_dut",
+            "port": 0
+          }
+        ]
+      }
+    ],
+    "env": [
+      {
+        "name": "controller_type",
+        "type": "str",
+        "value": "esp32"
+      },
+      {
+        "name": "uid_type",
+        "type": "str",
+        "value": "serial"
+      },
+      {
+        "name": "port",
+        "type": "str",
+        "value": "/dev/ttyUSB0"
+      }
+    ],
+    "color": "#e8dcb5"
+  },
+  {
+    "id": "stub_uid/mac_write_to_dut",
+    "type": "function",
+    "z": "subflow_stub_uid/mac_write_to_dut",
+    "name": "Not implemented",
+    "func": "msg.payload = {\n    success: false,\n    error: 'UID/MAC Write to DUT not yet implemented. Blocked on: Per-controller protocol for writing UID/MAC to persistent storage (AT commands, custom TLV, EEPROM write, etc.)',\n    timestamp: new Date().toISOString(),\n    scaffold: true\n};\nreturn msg;",
+    "outputs": 1,
+    "x": 220,
+    "y": 80,
+    "wires": [
+      []
+    ]
+  }
+]
