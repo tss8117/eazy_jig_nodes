@@ -1,0 +1,30 @@
+[
+  {
+    "id": "check_peripheral_subflow",
+    "type": "subflow",
+    "name": "Check Peripheral",
+    "info": "Checks one peripheral by asking the DUT to run its self-test and report the result. Peripherals include EEPROM, RTC, RTC Battery, Battery Voltage, Temp Sensor, Smoke Zone, GPIO, Internal Sensor, LSE Frequency, etc.\n\nThe actual protocol for asking the DUT depends on the product family (query TLV frame, AT command, etc.). This subflow is a wrapper around the atomic DUT Reports Result node — it configures which peripheral to ask about and interprets the reply.\n\n**Note:** DUT Reports Result is currently a SCAFFOLD (blocked on per-product protocol definition). Until it's implemented, this subflow will also return a scaffold response. That's intentional — this stays wired into the main flow and starts working automatically once the underlying atomic is implemented.\n\n**Configuration (per instance):**\n- `peripheral_name` — Human-readable name (e.g. 'EEPROM', 'RTC')\n- `peripheral_id` — Protocol-level ID sent to the DUT (product-specific)\n- `port` — Serial port to DUT\n- `baud` — Baud rate\n- `timeout_ms` — Reply wait timeout\n\n**Input:** any msg triggers the check.\n**Output:** msg.payload = { peripheral_name, status, dut_response, timestamp }",
+    "category": "eazy",
+    "in": [{ "x": 40, "y": 80, "wires": [{ "id": "cp_stub" }] }],
+    "out": [{ "x": 340, "y": 80, "wires": [{ "id": "cp_stub", "port": 0 }] }],
+    "env": [
+      { "name": "peripheral_name", "type": "str", "value": "EEPROM" },
+      { "name": "peripheral_id", "type": "str", "value": "0x01" },
+      { "name": "port", "type": "str", "value": "/dev/ttyUSB0" },
+      { "name": "baud", "type": "num", "value": "115200" },
+      { "name": "timeout_ms", "type": "num", "value": "2000" }
+    ],
+    "color": "#e8dcb5"
+  },
+  {
+    "id": "cp_stub",
+    "type": "function",
+    "z": "check_peripheral_subflow",
+    "name": "Not implemented (waits on DUT Reports Result)",
+    "func": "msg.payload = {\n    peripheral_name: env.get('peripheral_name'),\n    status: 'MISCONFIGURED',\n    error: 'Check Peripheral is a wrapper around DUT Reports Result, which is currently a scaffold. Blocked on per-DUT protocol definition.',\n    timestamp: new Date().toISOString(),\n    scaffold: true\n};\nreturn msg;",
+    "outputs": 1,
+    "x": 200,
+    "y": 80,
+    "wires": [[]]
+  }
+]

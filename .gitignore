@@ -1,0 +1,41 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.venv/
+venv/
+env/
+.mypy_cache/
+.pytest_cache/
+
+# --- Node-RED ---
+# Local runtime files if this repo is ever run directly from a Node-RED user dir
+.node-red/
+node_modules/
+flows_cred.json
+.config.nodes.json
+.config.nodes.json.backup
+
+# --- Firmware / hex files (large, product-specific, not meant to live in this repo) ---
+*.hex
+*.bin
+*.elf
+
+# --- Test logs and local results ---
+*.jsonl
+logs/
+test_results/
+
+# --- Editor / OS clutter ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- Env / secrets ---
+.env
+*.pem
+*.key

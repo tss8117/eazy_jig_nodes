@@ -1,0 +1,56 @@
+[
+  {
+    "id": "check_zone_subflow",
+    "type": "subflow",
+    "name": "Check Zone",
+    "info": "Checks one digital input zone on the DUT. Reads the current state of the zone via MCP23S17 and compares it against the expected value.\n\nInternally this uses the same MCP23S17 helper as the Digital Input Read atomic node.\n\n**Prerequisites:**\n- Pi has SPI0 enabled\n- MCP23S17 input expanders wired on SPI0 CE0 per block diagram\n- mcp23s17_helper.py present at configured path\n\n**Configuration (per instance):**\n- `zone_name` — Human-readable zone name (e.g. 'Zone 1', 'ZONE 1 DET', 'KEY SW')\n- `chip` — MCP23S17 hardware address 0-3 for the input expander this zone lives on\n- `pin` — Pin 0-15 on that chip\n- `expected_state` — 0 or 1, what the zone should read when healthy\n- `helper_path` — Path to mcp23s17_helper.py\n\n**Input:** any msg triggers the check.\n**Output:** msg.payload = { zone_name, status, actual, expected, timestamp }\n  - status is 'PASS' if actual matches expected, else 'FAIL'.",
+    "category": "eazy",
+    "in": [{ "x": 40, "y": 80, "wires": [{ "id": "cz_build" }] }],
+    "out": [{ "x": 700, "y": 80, "wires": [{ "id": "cz_evaluate", "port": 0 }] }],
+    "env": [
+      { "name": "zone_name", "type": "str", "value": "Zone 1" },
+      { "name": "chip", "type": "num", "value": "0" },
+      { "name": "pin", "type": "num", "value": "0" },
+      { "name": "expected_state", "type": "num", "value": "1" },
+      { "name": "helper_path", "type": "str", "value": "/home/pi/eazy_jig/mcp23s17_helper.py" }
+    ],
+    "color": "#c7e0f4"
+  },
+  {
+    "id": "cz_build",
+    "type": "function",
+    "z": "check_zone_subflow",
+    "name": "Prep read",
+    "func": "const zoneName = env.get('zone_name');\nconst chip = Number(env.get('chip'));\nconst pin = Number(env.get('pin'));\nconst expected = Number(env.get('expected_state'));\nconst helperPath = env.get('helper_path');\n\nif (!helperPath) { node.error('helper_path env var must be set', msg); return null; }\nif (![0, 1].includes(expected)) { node.error('expected_state must be 0 or 1', msg); return null; }\nif (isNaN(chip) || chip < 0 || chip > 7) { node.error('chip must be 0-7', msg); return null; }\nif (isNaN(pin) || pin < 0 || pin > 15) { node.error('pin must be 0-15', msg); return null; }\n\nmsg._cfg = { zoneName, chip, pin, expected };\nmsg.payload = `python3 ${helperPath} read --chip ${chip} --pin ${pin}`;\nreturn msg;",
+    "outputs": 1,
+    "x": 200,
+    "y": 80,
+    "wires": [["cz_exec"]]
+  },
+  {
+    "id": "cz_exec",
+    "type": "exec",
+    "z": "check_zone_subflow",
+    "command": "",
+    "addpay": "payload",
+    "append": "",
+    "useSpawn": "false",
+    "timer": "2",
+    "oldrc": false,
+    "name": "MCP23S17 read",
+    "x": 400,
+    "y": 80,
+    "wires": [["cz_evaluate"], ["cz_evaluate"], ["cz_evaluate"]]
+  },
+  {
+    "id": "cz_evaluate",
+    "type": "function",
+    "z": "check_zone_subflow",
+    "name": "Evaluate",
+    "func": "const rc = msg.rc && typeof msg.rc.code === 'number' ? msg.rc.code : null;\nconst text = (typeof msg.payload === 'string') ? msg.payload : '';\n\nif (rc === null) {\n    msg._buf = (msg._buf || '') + text;\n    return null;\n}\n\nconst output = (msg._buf || '').trim();\nconst cfg = msg._cfg;\n\ntry {\n    const result = JSON.parse(output);\n    if (!result.success) {\n        msg.payload = {\n            zone_name: cfg.zoneName,\n            status: 'FAIL',\n            error: result.error,\n            timestamp: new Date().toISOString()\n        };\n    } else {\n        const status = (result.actual === cfg.expected) ? 'PASS' : 'FAIL';\n        msg.payload = {\n            zone_name: cfg.zoneName,\n            status,\n            actual: result.actual,\n            expected: cfg.expected,\n            timestamp: new Date().toISOString()\n        };\n    }\n} catch (e) {\n    msg.payload = {\n        zone_name: cfg.zoneName,\n        status: 'FAIL',\n        error: `could not parse: ${output}`,\n        timestamp: new Date().toISOString()\n    };\n}\n\ndelete msg._cfg;\ndelete msg._buf;\nreturn msg;",
+    "outputs": 1,
+    "x": 560,
+    "y": 80,
+    "wires": [[]]
+  }
+]
