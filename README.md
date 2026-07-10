@@ -368,7 +368,3 @@ sudo pip3 install spidev --break-system-packages
 **Dashboard nodes don't appear or don't update.** Confirm exactly one dashboard package is installed (either v1 or v2, not both). Check that each dashboard node is assigned to a Group, which is assigned to a Tab.
 
 **A scaffold node fires in the flow and I don't want it to.** Scaffold nodes fire because they're wired in. If you don't want a scaffold to run yet, remove the wire feeding it. The scaffold sits unwired in the palette until its blockers resolve.
-
----
-
-Questions or issues, contact Siddharth Sheth.
